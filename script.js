@@ -1,28 +1,29 @@
-// Get the key from the browser's local storage
-let API_KEY = localStorage.getItem("GEMINI_API_KEY");
+/**
+ * SMART NOTES AI - SECURE VERSION
+ * The API_KEY is injected via GitHub Actions Secrets during deployment.
+ * This prevents the key from being visible in the GitHub repository history.
+ */
 
-let currentActionItems = []; // Stores current items for export
+// This variable is defined in index.html and replaced by GitHub Actions
+// If you are testing locally, you can temporarily put your key here, 
+// but DELETE IT before pushing to GitHub.
+let currentActionItems = []; 
 
 async function processNotes() {
-    // 1. SECURITY CHECK: If no key is found, ask the user to provide one
-    if (!API_KEY) {
-        const userKey = prompt("SECURITY: No API Key found. Please enter your Gemini API Key. (This is saved locally in your browser):");
-        if (userKey && userKey.trim() !== "") {
-            localStorage.setItem("GEMINI_API_KEY", userKey.trim());
-            API_KEY = userKey.trim();
-        } else {
-            alert("An API Key is required to use the Smart Notes AI.");
-            return;
-        }
+    const inputText = document.getElementById("noteInput").value;
+    
+    // Check if API_KEY exists (Injected from the Action)
+    if (typeof API_KEY === 'undefined' || API_KEY === "__API_KEY_PLACEHOLDER__") {
+        alert("API Key missing. If you are developing locally, please define API_KEY in index.html.");
+        return;
     }
 
-    const inputText = document.getElementById("noteInput").value;
     if (!inputText) {
         alert("Please enter some notes first!");
         return;
     }
 
-    // UI Updates: Show loading, hide previous results
+    // UI Updates
     document.getElementById("loading").style.display = "block";
     document.getElementById("output").style.display = "none";
     document.getElementById("exportBtn").style.display = "none";
@@ -30,7 +31,7 @@ async function processNotes() {
 
     const promptText = `
     Analyze the following meeting notes. Extract the action items, who is responsible, and the deadline.
-    Return ONLY a valid JSON object with this exact structure, nothing else:
+    Return ONLY a valid JSON object with this exact structure:
     {
       "actionItems": [
         {"task": "description", "person": "name", "due": "deadline"}
@@ -39,7 +40,6 @@ async function processNotes() {
     Notes: ${inputText}`;
 
     try {
-        // Using the most stable global model version
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -50,22 +50,11 @@ async function processNotes() {
 
         const data = await response.json();
         
-        // Detailed Error Handling
         if (data.error) {
-            console.error("Gemini API Error:", data.error);
-            if (data.error.status === "UNAUTHENTICATED") {
-                alert("Invalid API Key. Clearing saved key. Please refresh and try again.");
-                localStorage.removeItem("GEMINI_API_KEY");
-                location.reload();
-            } else {
-                alert(`API Error: ${data.error.message}`);
-            }
             throw new Error(data.error.message);
         }
 
         const rawText = data.candidates[0].content.parts[0].text;
-        
-        // Clean the response
         const cleanJson = rawText.replace(/```json|```/g, "").trim();
         const result = JSON.parse(cleanJson);
 
@@ -73,8 +62,8 @@ async function processNotes() {
         renderActionItems(currentActionItems);
 
     } catch (error) {
-        console.error("Application Error:", error);
-        alert("Process failed. Please check the Console (F12) for the red error message.");
+        console.error("AI Error:", error);
+        alert("Failed to process notes. Check console for details.");
     } finally {
         document.getElementById("loading").style.display = "none";
         document.getElementById("summarizeBtn").disabled = false;
@@ -110,8 +99,7 @@ function copyAsMarkdown() {
 
     navigator.clipboard.writeText(markdown).then(() => {
         const btn = document.getElementById("exportBtn");
-        const originalText = btn.innerHTML;
         btn.innerHTML = "✅ Copied!";
-        setTimeout(() => btn.innerHTML = originalText, 2000);
+        setTimeout(() => btn.innerHTML = "Copy as Markdown", 2000);
     });
 }

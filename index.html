@@ -3,26 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Notes - AI Meeting Summarizer</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>⚡ Smart Notes AI</h1>
-        <p>Paste your messy meeting notes below to extract structured action items instantly.</p>
-        
-        <textarea id="noteInput" placeholder="Paste meeting notes here... (e.g., We talked about the design. John needs to send wireframes by Tuesday...)"></textarea>
-        
-        <button id="summarizeBtn" onclick="processNotes()">Generate AI Summary</button>
-        <div class="loader" id="loading" style="display: none;"></div>
-
-        <div id="output" style="display: none;">
-            <h3>📝 Action Items</h3>
-            <div id="checklist"></div>
-            <button id="exportBtn" onclick="exportMarkdown()" style="display: none; margin-top: 20px; background-color: #17a2b8;">📋 Copy as Markdown</button>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
-</body>
-</html>
+    <title>Smart Notes AI - Action Item Extractor</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background-color: #f4f7f6; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        textarea { width: 100%; height: 200px; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: vertical; }
+        button { background-color: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #loading { display: none; text-align: center; margin-top: 20px; color: #3498db; font-weight: bold; }
+        #output { display: none; margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f9f9f9;
