@@ -1,4 +1,4 @@
-// Check if an API key is already saved in the browser's local storage
+// Get the key from the browser's local storage
 let API_KEY = localStorage.getItem("GEMINI_API_KEY");
 
 let currentActionItems = []; // Stores current items for export
@@ -6,7 +6,7 @@ let currentActionItems = []; // Stores current items for export
 async function processNotes() {
     // 1. SECURITY CHECK: If no key is found, ask the user to provide one
     if (!API_KEY) {
-        const userKey = prompt("SECURITY: No API Key found. Please enter your Gemini API Key. (This is saved locally in your browser and not sent to GitHub):");
+        const userKey = prompt("SECURITY: No API Key found. Please enter your Gemini API Key. (This is saved locally in your browser):");
         if (userKey && userKey.trim() !== "") {
             localStorage.setItem("GEMINI_API_KEY", userKey.trim());
             API_KEY = userKey.trim();
@@ -28,6 +28,7 @@ async function processNotes() {
     document.getElementById("exportBtn").style.display = "none";
     document.getElementById("summarizeBtn").disabled = true;
 
+    // Use gemini-2.0-flash for the best performance and compatibility
     const promptText = `
     Analyze the following meeting notes. Extract the action items, who is responsible, and the deadline.
     Return ONLY a valid JSON object with this exact structure, nothing else:
@@ -39,7 +40,8 @@ async function processNotes() {
     Notes: ${inputText}`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        // UPDATED URL: gemini-2.0-flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -49,7 +51,7 @@ async function processNotes() {
 
         const data = await response.json();
         
-        // Error handling for invalid API keys
+        // Error handling for invalid API keys or model issues
         if (data.error) {
             if (data.error.status === "UNAUTHENTICATED") {
                 alert("Invalid API Key. Clearing saved key. Please refresh and try again.");
@@ -108,11 +110,4 @@ function copyAsMarkdown() {
         btn.innerHTML = "✅ Copied!";
         setTimeout(() => btn.innerHTML = originalText, 2000);
     });
-}
-
-// Added a helper function to let you logout/reset the key if needed
-function resetApiKey() {
-    localStorage.removeItem("GEMINI_API_KEY");
-    alert("API Key cleared. Page will reload.");
-    location.reload();
 }
