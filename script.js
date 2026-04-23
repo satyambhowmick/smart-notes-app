@@ -1,12 +1,12 @@
 // Get the key from the browser's local storage
-let API_KEY = localStorage.getItem("AIzaSyAiKTeYwLGdWih4oZHfe43DqiBIFikl55Q");
+let API_KEY = localStorage.getItem("GEMINI_API_KEY");
 
 let currentActionItems = []; // Stores current items for export
 
 async function processNotes() {
     // 1. SECURITY CHECK: If no key is found, ask the user to provide one
     if (!API_KEY) {
-        const userKey = prompt("SECURITY: No API Key found. Please enter your Gemini API Key. (This is saved locally in your browser and not uploaded to GitHub):");
+        const userKey = prompt("SECURITY: No API Key found. Please enter your Gemini API Key. (This is saved locally in your browser):");
         if (userKey && userKey.trim() !== "") {
             localStorage.setItem("GEMINI_API_KEY", userKey.trim());
             API_KEY = userKey.trim();
@@ -39,8 +39,8 @@ async function processNotes() {
     Notes: ${inputText}`;
 
     try {
-        // UPDATED MODEL: Using gemini-2.5-flash for the 2026 API
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+        // Using the most stable global model version
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -50,11 +50,11 @@ async function processNotes() {
 
         const data = await response.json();
         
-        // Comprehensive Error Handling
+        // Detailed Error Handling
         if (data.error) {
             console.error("Gemini API Error:", data.error);
             if (data.error.status === "UNAUTHENTICATED") {
-                alert("Invalid API Key. Clearing saved key. Please refresh and try again with a valid key.");
+                alert("Invalid API Key. Clearing saved key. Please refresh and try again.");
                 localStorage.removeItem("GEMINI_API_KEY");
                 location.reload();
             } else {
@@ -65,7 +65,7 @@ async function processNotes() {
 
         const rawText = data.candidates[0].content.parts[0].text;
         
-        // Clean the response (sometimes AI wraps JSON in backticks)
+        // Clean the response
         const cleanJson = rawText.replace(/```json|```/g, "").trim();
         const result = JSON.parse(cleanJson);
 
@@ -74,7 +74,7 @@ async function processNotes() {
 
     } catch (error) {
         console.error("Application Error:", error);
-        alert("Failed to process notes. Check the browser console (F12) for the specific error code.");
+        alert("Process failed. Please check the Console (F12) for the red error message.");
     } finally {
         document.getElementById("loading").style.display = "none";
         document.getElementById("summarizeBtn").disabled = false;
