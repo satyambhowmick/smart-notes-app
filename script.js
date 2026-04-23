@@ -1,105 +1,118 @@
-// PUT YOUR REAL API KEY HERE
-const API_KEY = "AIzaSyAliL3cUDiex3pE4Hpq2XV0KyZfAp4pIi0"; 
+// Check if an API key is already saved in the browser's local storage
+let API_KEY = localStorage.getItem("GEMINI_API_KEY");
 
 let currentActionItems = []; // Stores current items for export
 
 async function processNotes() {
+    // 1. SECURITY CHECK: If no key is found, ask the user to provide one
+    if (!API_KEY) {
+        const userKey = prompt("SECURITY: No API Key found. Please enter your Gemini API Key. (This is saved locally in your browser and not sent to GitHub):");
+        if (userKey && userKey.trim() !== "") {
+            localStorage.setItem("GEMINI_API_KEY", userKey.trim());
+            API_KEY = userKey.trim();
+        } else {
+            alert("An API Key is required to use the Smart Notes AI.");
+            return;
+        }
+    }
+
     const inputText = document.getElementById("noteInput").value;
     if (!inputText) {
         alert("Please enter some notes first!");
         return;
     }
 
+    // UI Updates: Show loading, hide previous results
     document.getElementById("loading").style.display = "block";
     document.getElementById("output").style.display = "none";
     document.getElementById("exportBtn").style.display = "none";
     document.getElementById("summarizeBtn").disabled = true;
 
-    const prompt = `
+    const promptText = `
     Analyze the following meeting notes. Extract the action items, who is responsible, and the deadline.
     Return ONLY a valid JSON object with this exact structure, nothing else:
     {
-      "action_items": [
-        {"owner": "Name", "task": "What they need to do", "deadline": "When it's due or 'None'"}
+      "actionItems": [
+        {"task": "description", "person": "name", "due": "deadline"}
       ]
     }
-    
-    Meeting Notes:
-    "${inputText}"
-    `;
+    Notes: ${inputText}`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }]
+            })
         });
 
         const data = await response.json();
         
-        if (!response.ok) throw new Error(data.error?.message || "API Error");
-        
-        let aiText = data.candidates[0].content.parts[0].text;
-        aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        const resultJSON = JSON.parse(aiText);
-        currentActionItems = resultJSON.action_items || [];
-        
-        renderChecklist(currentActionItems);
-        saveToHistory(currentActionItems); // Constraint: Local Persistence
-        
-        document.getElementById("output").style.display = "block";
-        document.getElementById("exportBtn").style.display = "block";
+        // Error handling for invalid API keys
+        if (data.error) {
+            if (data.error.status === "UNAUTHENTICATED") {
+                alert("Invalid API Key. Clearing saved key. Please refresh and try again.");
+                localStorage.removeItem("GEMINI_API_KEY");
+                location.reload();
+            }
+            throw new Error(data.error.message);
+        }
+
+        const rawText = data.candidates[0].content.parts[0].text;
+        const cleanJson = rawText.replace(/```json|```/g, "").trim();
+        const result = JSON.parse(cleanJson);
+
+        currentActionItems = result.actionItems;
+        renderActionItems(currentActionItems);
 
     } catch (error) {
-        console.error("Full Error Details:", error);
-        alert("Error: " + error.message);
+        console.error("AI Error:", error);
+        alert("Failed to process notes. Check console for details.");
     } finally {
         document.getElementById("loading").style.display = "none";
         document.getElementById("summarizeBtn").disabled = false;
     }
 }
 
-function renderChecklist(items) {
-    const checklistDiv = document.getElementById("checklist");
-    checklistDiv.innerHTML = "";
-
-    if (!items || items.length === 0) {
-        checklistDiv.innerHTML = "<p>No action items found.</p>";
-        return;
-    }
-
-    items.forEach(item => {
-        checklistDiv.innerHTML += `
-            <div class="checklist-item">
-                <input type="checkbox">
-                <label><strong>${item.owner}:</strong> ${item.task} <em>(Due: ${item.deadline})</em></label>
-            </div>
-        `;
-    });
-}
-
-// Constraint 1: Save last 5 to LocalStorage
-function saveToHistory(items) {
-    if (items.length === 0) return;
-    let history = JSON.parse(localStorage.getItem('smartNotesHistory')) || [];
-    history.unshift(items); // Add newest to the top
-    if (history.length > 5) history.pop(); // Remove oldest if over 5
-    localStorage.setItem('smartNotesHistory', JSON.stringify(history));
-}
-
-// Constraint 2: Markdown Export Engine
-function exportMarkdown() {
-    if (currentActionItems.length === 0) return;
+function renderActionItems(items) {
+    const list = document.getElementById("actionList");
+    list.innerHTML = "";
     
-    let mdText = "### 📝 Smart Notes - Action Items\n\n";
-    currentActionItems.forEach(item => {
-        mdText += `- [ ] **${item.owner}**: ${item.task} *(Due: ${item.deadline})*\n`;
+    items.forEach((item, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <input type="checkbox" id="item-${index}">
+            <label for="item-${index}">
+                <strong>${item.person}:</strong> ${item.task} <em>(Due: ${item.due})</em>
+            </label>
+        `;
+        list.appendChild(li);
     });
 
-    navigator.clipboard.writeText(mdText).then(() => {
-        alert("Copied to clipboard as Markdown! You can paste it anywhere.");
-    }).catch(err => {
-        console.error("Failed to copy", err);
+    document.getElementById("output").style.display = "block";
+    document.getElementById("exportBtn").style.display = "block";
+}
+
+function copyAsMarkdown() {
+    if (currentActionItems.length === 0) return;
+
+    let markdown = "### 📝 Action Items\n\n";
+    currentActionItems.forEach(item => {
+        markdown += `- [ ] **${item.person}:** ${item.task} (Due: ${item.due})\n`;
     });
+
+    navigator.clipboard.writeText(markdown).then(() => {
+        const btn = document.getElementById("exportBtn");
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "✅ Copied!";
+        setTimeout(() => btn.innerHTML = originalText, 2000);
+    });
+}
+
+// Added a helper function to let you logout/reset the key if needed
+function resetApiKey() {
+    localStorage.removeItem("GEMINI_API_KEY");
+    alert("API Key cleared. Page will reload.");
+    location.reload();
 }
