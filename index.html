@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Notes - AI Meeting Summarizer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Smart Notes AI</h1>
+        <p>Paste your messy meeting notes below to extract structured action items instantly.</p>
+        
+        <textarea id="noteInput" placeholder="Paste meeting notes here... (e.g., We talked about the design. John needs to send wireframes by Tuesday...)"></textarea>
+        
+        <button id="summarizeBtn" onclick="processNotes()">Generate AI Summary</button>
+        <div class="loader" id="loading" style="display: none;"></div>
+
+        <div id="output" style="display: none;">
+            <h3>📝 Action Items</h3>
+            <div id="checklist"></div>
+            <button id="exportBtn" onclick="exportMarkdown()" style="display: none; margin-top: 20px; background-color: #17a2b8;">📋 Copy as Markdown</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
